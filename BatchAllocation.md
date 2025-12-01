@@ -371,3 +371,36 @@ BatchAllocation(EXEC_EXPENSES_JOB).execute()
       - SGA__c → ReportSummary__c (販管費) 作成
 ```
 
+## 5. 各 DAO / Logic クラスの責務一覧
+### 5.1. DAO クラス（データアクセス層）
+
+| クラス名 | レイヤ | 主な責務 | 主な利用メソッド（本クラスから呼び出しているもの） |
+|----|----|----|----|
+| DivisionDao | DAO | 部門マスタ（Division__c）および部門 DTO（DivisionDto）の取得 | getDivisionDtoMap(companyCode, ...)getDivisionCodeMapByCompanyCode(companyCode) |
+| UserSectionDao | DAO | ユーザ所属部門情報（UserSection__c）の取得 | getUserSectionMap(companyCode, isLaborTarget, isSgaTarget, divMap, targetUserStatus, exclusionEmpStatus |
+| ProjectDao | DAO | 案件（Project__c）情報の取得 | findByJobNoSetCompanyCode(jobNoSet, companyCode) |
+| TotalizationCodeDao | DAO | 集計コードマスタ（TotalizationCode__c）の取得 | getTotalizationCodeByCodeSet(totalizationCodeSet) |
+| SGADao | DAO | 既存販管費（SGA__c）の取得 | getSGAByAllocationDate(allocationDate, companyCode, summaryKeySet) |
+
+設計上のポイント
+-	BatchAllocation は「どのマスタが必要か」のみを知り、
+「どのように SOQL するか」は DAO クラスに委譲しています。
+-	DAO は原則「検索専用」とし、DML は BatchAllocation / AllocationLogic 側で行う想定です。
+
+### 5.2. Logic クラス（ドメインロジック層）
+| クラス名 | レイヤ | 主な責務 | 主な利用メソッド（本クラスから見える範囲） |
+|----|----|----|----|
+| AllocationLogic | ドメインロジック | 各種トランザクション（経費・労務費・材料費・入金・請求書・仕入・部門販管費）を Cost/SGA/AllocationDetail へ変換し、配賦ロジックを実装 | toCostForExpensesJob(...)toCostForExpensesTotalizationCode(...)allocationTotalizationCodeEqualityFromExpensesDetail(...)toSgaDto(ExpensesDetail__c / LaborCost__c / Credit__c / PayInvoice__c / Procurement__c / DivisionSGA__c)allocationDepartments(...)allocationEmployees(...)allocationLabor(...)toCostForMaterialCostJob(...)toCostForMaterialCostTotalizationCode(...)allocationTotalizationCodeEqualityFromMaterialCost(...) など |
+| MonthlyClosingLogic | アプリケーション | 月次締め処理の状態管理・同時実行制御。配賦バッチの開始〜終了を「締め処理ログ」と紐づけて管理する | setProcessingLogToCompleted()（配賦処理の成功/異常終了時に呼び出し） |
+
+設計上のポイント
+-	AllocationLogic は ビジネスルールの変更点を閉じ込める層 として設計されています。
+配賦割合・キー項目の変更は原則 AllocationLogic 側で完結させ、BatchAllocation は「いつ・どの対象に配賦を行うか」のオーケストレーションに専念します。
+-	MonthlyClosingLogic は月次締めの UI / 他のバッチと連携するための窓口となる想定です。
+
+## 6. 配賦ロジック（割合・キー項目）のビジネスルール表
+※ここでは、コードから読み取れる「配賦単位」「キー項目」を整理しつつ、
+　具体的な割合計算は AllocationLogic 側の実装に依存しているため、抽象度を一段上げて記載しています。
+（実プロジェクトでは、AllocationLogic の仕様書 or 単体テスト仕様とリンクさせる想定）
+
+### 6.1. 経費関連
