@@ -404,3 +404,24 @@ BatchAllocation(EXEC_EXPENSES_JOB).execute()
 （実プロジェクトでは、AllocationLogic の仕様書 or 単体テスト仕様とリンクさせる想定）
 
 ### 6.1. 経費関連
+| プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
+|----|----|----|----|
+| 経費（JOB） EXEC_EXPENSES_JOB | ExpensesDetail__c | - 種別: Type__c = ConstTypeJob- 当月計上月末日 (ExpensesNo__r.PostMonthEndDate__c)- ステータス: 精算済・支払処理済 | - 1 明細 = 1 原価 (Cost__c) へ変換（toCostForExpensesJob）- 案件明細 / 案件に紐づけ、一対一または単純な転写 |
+| 経費（集計コード） | ExpensesDetail__c | - 種別: Type__c = ConstTypeTotalizationCode- 集計コード (TotalizationCode__c) | - 集計コード単位で原価化 (toCostForExpensesTotalizationCode)- 集計コード → 部門は TotalizationCode マスタに依存 |
+| 経費（共通費） | ExpensesDetail__c | - 種別: Type__c = ConstTypeCommonExpense- 申請部門 (ExpensesNo__r.ApplicationDept__c) | - allocationTotalizationCodeEqualityFromExpensesDetail により、各部門へ按分（均等 or 比率配分）- 部門マスタ (divMap) に基づく配賦 |
+
+### 6.2. 販管費（経費由来）
+| プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
+|----|----|----|----|
+| 経費（販管費:部門配賦） EXEC_EXPENSES_SGA_DEPT | ExpensesDetail__c → SgaDto | - 種別: 販管費 (ConstTypeSalesManagementExpense)- 販管費配賦先 =「所属部門」または西日本フラグ | - toSgaDto で販管費 DTO 化- allocationDepartments により、申請部門（ApplicationDept）を起点とした部門配賦 |
+| 経費（販管費:全社配賦） EXEC_EXPENSES_SGA_COMPANY | ExpensesDetail__c → SgaDto | - 種別: 販管費- 販管費配賦先 =「全社」- 西日本の申請部門は除外 | - allocationEmployees により、従業員所属部門 (userSecMap) を用いた全社配賦（社員数・工数などを基準に配賦する前提） |
+
+### 6.3. 労務費 / 販管費（給与・人件費）
+| プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
+|----|----|----|----|
+| 労務費 EXEC_LABORCOST_LABOR | LaborCost__c | - Type__c = '労務費'- 従業員コード (EmpCode__c)- PCA部門コード (PCADivisionCode__c)- 対象ユーザステータス/雇用形態 | - toSgaDto(laborCost) で人件費 DTO 化- allocationLabor(sgaDto, divMap, userSecMap) により、従業員の所属部門・部門マスタに基づく配賦（勤務時間や稼働情報を基準とする想定） |
+| 販管費 EXEC_LABORCOST_SGA | LaborCost__c | - Type__c = '販管費' | - allocationEmployees により、全社ベースでの人件費配賦- 全社員を分母とした割合配分・特定職種だけの配分など、詳細は AllocationLogic に依存 |
+
+### 6.4. 材料費
+| プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
+|----|----|----|----|
