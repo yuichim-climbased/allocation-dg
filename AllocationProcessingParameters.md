@@ -23,3 +23,26 @@
 | EXEC_LABORCOST_SGA | 労務費由来販管費（全社配賦） | getLaborCost(type='販管費') | allocationSga(List<LaborCost__c>, BC) | logic.toSgaDto(laborCost) → logic.allocationEmployees(sgaDto, divMap, userSecMap) で AllocationDetail__c 生成 → insert |
 
 ### 1.4. 材料費系
+| EXEC_* | 処理カテゴリ | start（データ取得） | execute（ビジネスロジック） | 生成ロジック・主な処理 |
+|----|----|----|----|----|
+| EXEC_MATERIALCOST_JOB | 材料費（JOB原価） | getMaterialCostJob() | allocationMaterialCostJob(List<MaterialCost__c>, BC) | ProjectDao.findByJobNoSetCompanyCode() で案件取得 → logic.toCostForMaterialCostJob(materialCost, project) で Cost__c 生成 → insertCostAndProjectCost() |
+| EXEC_MATERIALCOST_TOTALIZAIONCODE | 材料費（集計コード原価） | getMaterialCostTotalizationCode() | allocationMaterialCostTotalizationCode(List<MaterialCost__c>, BC) | TotalizationCodeDao.getTotalizationCodeByCodeSet() でマスタ取得 → logic.toCostForMaterialCostTotalizationCode(materialCost, totalizationCodeId) → insertCostAndProjectCost() |
+| EXEC_MATERIALCOST_DEPT | 材料費（部門原価） | getMaterialCostDept() | allocationMaterialCostDept(List<MaterialCost__c>, BC) | logic.allocationTotalizationCodeEqualityFromMaterialCost(materialCost, divCodeMap, divMap) で Cost__c 群生成 → insertCostAndProjectCost() |
+
+### 1.5. 振込手数料・請求書払い・仕入・部門販管費
+| EXEC_* | 処理カテゴリ | start（データ取得） | execute（ビジネスロジック） | 生成ロジック・主な処理 |
+|----|----|----|----|----|
+| EXEC_CREDIT | 振込手数料（販管費） | getCredit() | allocationCredit(List<Credit__c>, BC) | logic.toSgaDto(credit) → logic.allocationEmployees(sgaDto, divMap, userSecMap) で AllocationDetail__c → insert |
+| EXEC_PAYINVOICE_DEPT | 請求書払い（所属部門配賦） | getPayInvoiceDept() | allocationPayInvoiceDept(List<PayInvoice__c>, BC) | logic.toSgaDto(payInvoice) → logic.allocationDepartments(sgaDto, divMap) → AllocationDetail__c insert |
+| EXEC_PAYINVOICE_COMPANY | 請求書払い（全社配賦） | getPayInvoiceCompany() | allocationPayInvoiceCompany(List<PayInvoice__c>, BC) | logic.toSgaDto(payInvoice) → logic.allocationEmployees(sgaDto, divMap, userSecMap) → AllocationDetail__c insert |
+| EXEC_PROCUREMENTSGA | 仕入（販管費） | getProcurement() | allocationProcurement(List<Procurement__c>, BC) | logic.toSgaDto(procurement) → logic.allocationEmployees(sgaDto, divMap, userSecMap) → AllocationDetail__c insert |
+| EXEC_DIVISIONSGA | 部門販管費（部門配賦） | getDivisionSga() | allocationDivisionSga(List<DivisionSGA__c>, BC) | divCodeMap で部門マスタ参照 → logic.toSgaDto(divisionSga, divisionId) → logic.allocationDepartments(sgaDto, divMap) → AllocationDetail__c insert |
+
+### 1.6. 後処理（配賦明細→販管費、帳票集計作成）
+| EXEC_* | 処理カテゴリ | start（データ取得） | execute（ビジネスロジック） | 生成ロジック・主な処理 |
+|----|----|----|----|----|
+| EXEC_AD_TO_SGA | 配賦明細から販管費作成 | getAllocationDetailToSga() | insertAllocationDetailToSga(List<AllocationDetail__c>, BC) | toSga(AllocationDetail__c) で SGA__c 変換 → 発生日＋科目＋部門(GL)単位で集約 → 既存 SGA__c を SGADao.getSGAByAllocationDate() で取得し加算 → upsert |
+| EXEC_POST1 | 帳票集計（原価）作成 | getCost() | insertReportSummaryFromCost(List<Cost__c>) | Cost__c ごとに ReportSummary__c 生成 → insert |
+| EXEC_POST2 | 帳票集計（販管費）作成 | getSga() | insertReportSummaryFromSga(List<SGA__c>) | SGA__c ごとに ReportSummary__c 生成 → insert |
+
+## 2. データ取得条件（SOQL WHERE 条件）
