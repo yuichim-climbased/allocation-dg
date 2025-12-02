@@ -355,3 +355,68 @@ WHERE CompanyCode__c                    = :companyCode
   AND CALENDAR_MONTH(appsfs__fs_DeliveryDate__c)   = :processMonth
   AND RecordTypeId                      = :sgaRecordTypeId
 ```
+
+#### EXEC_DIVISIONSGA – getDivisionSga（DivisionSGA__c）
+1 AND 2 AND 3
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 部門販管費 | DivisionSGA__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 部門販管費 | DivisionSGA__c | 計上日 | CALENDAR_YEAR(YMD__c) | = | 画面入力の"年"値 |
+| 3 | 部門販管費 | DivisionSGA__c | 計上日 | CALENDAR_MONTH(YMD__c) | = | 画面入力の"月"値 |
+
+```
+FROM DivisionSGA__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(YMD__c)             = :processYear
+  AND CALENDAR_MONTH(YMD__c)            = :processMonth
+```
+
+### 2.6. 配賦明細→販管費・集計作成
+#### EXEC_AD_TO_SGA – getAllocationDetailToSga（AllocationDetail__c）
+1 AND 2 AND 3
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 配賦明細データ | AllocationDetail__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 配賦明細データ | AllocationDetail__c | 計上日 | CALENDAR_YEAR(YMD__c) | = | 画面入力の"年"値 |
+| 3 | 配賦明細データ | AllocationDetail__c | 計上日 | CALENDAR_MONTH(YMD__c) | = | 画面入力の"月"値 |
+
+```
+FROM AllocationDetail__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(YMD__c)             = :processYear
+  AND CALENDAR_MONTH(YMD__c)            = :processMonth
+```
+
+#### EXEC_POST1 – getCost（Cost__c）
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 原価 | Cost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 原価 | Cost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 原価 | Cost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 4 | 原価 | Cost__c | 計上済フラグ | CostFlg__c | = | false |
+
+```
+FROM Cost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND CostFlg__c                        = false
+```
+
+#### FROM SGA__c
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 販管費 | SGA__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 販管費 | SGA__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 販管費 | SGA__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 4 | 販管費 | SGA__c | 締め管理 | Closing__c | = | null |
+
+```
+FROM SGA__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND Closing__c                        = null
+```
