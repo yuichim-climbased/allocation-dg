@@ -425,3 +425,135 @@ BatchAllocation(EXEC_EXPENSES_JOB).execute()
 ### 6.4. 材料費
 | プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
 |----|----|----|----|
+| 材料費（JOB） EXEC_MATERIALCOST_JOB | MaterialCost__c | - JOBNo (JOBNo__c が not null)- ProjectDao.findByJobNoSetCompanyCode で対応する Project__c 必須 | - JOBNo → 案件への一対一紐づけが前提- toCostForMaterialCostJob で原価化し、対応案件に紐づけ |
+| 材料費（集計コード） EXEC_MATERIALCOST_TOTALIZAIONCODE | MaterialCost__c | - 集計コード (TotalizationCode__c が not null)- TotalizationCodeDao でマスタ取得 | - 集計コード → TotalizationCode__c.Id を通じて部門構造へ- toCostForMaterialCostTotalizationCode で原価化 |
+| 材料費（部門） EXEC_MATERIALCOST_DEPT | MaterialCost__c | - 部門コード (DeptCode__c が not null)- DivisionDao.getDivisionCodeMapByCompanyCode / divMap | - allocationTotalizationCodeEqualityFromMaterialCost により、部門コード起点で集計コード/部門へ均等・比率配賦- 詳細な配賦ルールは AllocationLogic に依存 |
+
+### 6.5. 入金・請求書・仕入・部門販管費
+| プロセス | 対象オブジェクト | 主なキー項目 / 条件 | 配賦単位・ビジネスルール（概要） |
+|----|----|----|----|
+| 入金(振込手数料) EXEC_CREDIT | Credit__c | - DiffOffsetType__c != null- 振込手数料 (Fee__c) | - toSgaDto(credit) で販管費 DTO 化- allocationEmployees により、全社レベルで手数料を配賦 |
+| 請求書払い(所属部門) EXEC_PAYINVOICE_DEPT | PayInvoice__c | - 承認済 (ApprovalStatus__c)- 販管費配賦対象科目 (ExpenseItem__r.AccountsRelation__r.SgaAllocationTarget__c = true)- 所属部門 or 西日本 | - toSgaDto(payInvoice) に変換後、allocationDepartments で申請部門ベースに配賦 |
+| 請求書払い(全社) EXEC_PAYINVOICE_COMPANY | PayInvoice__c | - 承認済- 販管費配賦先 = 全社- 西日本は除外 | - allocationEmployees により全社配賦 |
+| 仕入(販管費) EXEC_PROCUREMENTSGA | Procurement__c | - 仕入レコードタイプ = 販管費 (RID_Proc_Sga__c) | - toSgaDto(procurement) で販管費 DTO 化- allocationEmployees により全社配賦 |
+| 部門販管費 EXEC_DIVISIONSGA | DivisionSGA__c | - 部門コード (DivisionCode_GL__c) が divCodeMap に存在すること | - toSgaDto(divisionSga, divisionId) により販管費DTO化- allocationDepartments で該当部門を起点に配賦 |
+
+### 6.6. 配賦明細 → 販管費集約
+| 処理 | 対象 | 主なキー項目 / 条件 | ビジネスルール（概要） |
+|----|----|----|----|
+| 配賦明細の集約 EXEC_AD_TO_SGA | AllocationDetail__c | - 当月分 (YMD__c 年月 = 処理年月)- createSummaryKey = AccrualDate + AccountsCode + Division_GL | - 配賦明細 → 販管費 (SGA__c) へ変換 (toSga)- SummaryKey 単位で金額を合計し、既存 SGA__c と合算して upsert |
+
+## 7. エラーケースと運用フロー（エラーメール受領 → 再実行）
+### 7.1. 想定エラーケース
+本バッチで発生しうる主なエラーは以下の通りです。
+1.	データ不整合系
+	-	材料費(JOB) の JOBNo に対応する案件が存在しない
+	    -	allocationMaterialCostJob 内で projectJobnoMap にキーが無い場合、AgrexRuntimeException を throw
+	-	材料費(集計コード)の集計コードに対応するマスタが存在しない
+	    -	allocationMaterialCostTotalizationCode 内で totalizationCodeMap にキーが無い場合
+	-	部門販管費の部門コードが部門マスタに存在しない
+	    -	allocationDivisionSga 内で divCodeMap にキーが無い場合
+
+2.	ガバナ制限・パフォーマンス系
+	-	1トランザクション内の DML/クエリ数超過
+	-	1レコードあたりの処理負荷が高すぎる場合の CPU タイムアウト
+	-	全社配賦対象データ（社員数や部門数が多い）による負荷
+→ これを避けるため、finish 内で次バッチの nextBatchExecutNum を 10 件程度に抑制する処理が入っている
+
+3.	DML / 参照制約エラー
+	-	外部キー制約やトリガのバリデーション違反による DMLException
+	-	例：ReportSummary__c 更新時のレコードタイプ・必須項目不足など
+
+4.	想定外のランタイムエラー
+	-	NullPointerException
+	-	型変換エラー
+	-	外部ロジック（AllocationLogic, MonthlyClosingLogic, 各 DAO）の内部例外 など
+
+これらの例外は execute() メソッドで catch され、errors リストに蓄積されます。
+
+### 7.2. システム側のエラー時挙動
+1.	execute 内での例外捕捉
+
+```
+} catch(Exception e) {
+    errors.add(e);
+}
+```
+
+	-	例外が発生したスコープ分は処理中断されますが、バッチは最後まで実行され、finish() に到達します。
+
+2.	finish() 内のエラー判定
+
+```
+if(!errors.isEmpty()) {
+    // 管理者向けメール送信
+    // AllocationLog__c にエラー内容記録
+    // monthlylogic.setProcessingLogToCompleted()
+    return;
+}
+```
+
+-	errors が 1 件以上ある場合、その時点でプロセスチェーンは停止 し、次プロセスの起動は行いません。
+	-	以下のアクションを実行：
+	    -	カスタムラベル BatchCostAllocateErrorMailSend が true のとき、システム管理者宛てにメール送信
+	        -	宛先：ConstSystemAdmin ラベル
+	        -	件名：配賦処理でシステムエラーが発生しました(システム管理者向け)
+	        -	本文：buildAdminErrorMsg(jobId, errors) で生成（例外タイプ・メッセージ・スタックトレースを整形）
+	    -	AllocationLog__c にエラー内容を HTML 改行に変換して保存 (ErrorMessage__c)
+	        -	ProcessType__c = '配賦'
+	        -	SuccessFlg__c = false
+	        -	CompanyCode__c = companyCode
+	    -	monthlylogic.setProcessingLogToCompleted() 呼び出し
+→ 月次締め処理側では「配賦処理はエラーで終了した」という状態を検知できる。
+
+### 7.3. 運用フロー（エラーメール受領 → 原因調査 → 再実行）
+1.	エラーメールの受領
+    -   システム管理者は、件名「配賦処理でシステムエラーが発生しました(システム管理者向け)」のメールを受信。
+    -   本文には以下が含まれる：
+        -   Job No（バッチジョブ ID）
+	    -	例外タイプ (exp.getTypeName())
+	    -	メッセージ (exp.getMessage())
+	    -	スタックトレース (exp.getStackTraceString())
+
+2.	ログ画面・オブジェクトでの状況確認
+    -   AllocationLog__c を参照し、以下の情報を確認：
+	    -	ErrorMessage__c（HTML 改行付きエラーメッセージ）
+	    -	CompanyCode__c
+	    -	CreatedDate（エラー発生日時）
+    -   必要に応じて、AsyncApexJob などの標準ジョブ監視画面で詳細を確認。
+
+3.	原因調査
+    -   エラーメッセージの内容に応じて、該当データを検索・確認する。
+	    -	例：
+	        -	「材料費のJOBNoに対応する案件が存在しません」
+→ MaterialCost__c の JOBNo__c をキーに Project__c を検索し、マスタ不足を修正
+	        -	「部門のコードが部門マスタに存在しません」
+→ Division__c マスタに不足コードを追加 or 誤ったコードを修正
+    -   必要に応じて、AllocationLogic 側の配賦ロジックの設定ミス・バグも確認。
+
+4.	データ修正
+	-	トランザクションデータ（経費・材料費・請求書など）の入力ミス修正
+	-	マスタ（部門・集計コード・案件など）の整合性修正
+
+5.	配賦バッチの再実行
+	-	月次締め画面（あるいは管理者用画面）から、同じ allocationDate / companyCode で 初回と同様に EXEC_PRE1 から 配賦バッチを再起動。
+	-	PRE 系プロセスにより、当月分の原価/販管費/配賦明細/帳票集計は一度クリーンアップされるため、
+部分的な重複登録は発生せず、再計算による整合性が保たれる。
+
+### 7.4. 再実行時の注意事項
+-	同じ月を複数回配賦したい場合
+	-	必ず月次締め画面経由で、PRE プロセスを含めたチェーン全体を再実行すること。
+	-	BatchAllocation を途中プロセス（例: EXEC_MATERIALCOST_JOB）から単独起動すると、
+原価・販管費・帳票集計の整合性が崩れる可能性があります。
+-	長時間・高負荷バッチになるケース
+	-	対象データが大量な場合（特に全社配賦系）は、finish() 内で自動的に batchExecuteNum を絞っていますが、
+それでもガバナエラーが発生する場合、以下のチューニング検討が必要です。
+	    -	カスタムラベル BatchCostAllocateExeNum の見直し
+	    -	プロセス分割（会社コード単位・部門単位での分割起動）
+	    -	AllocationLogic 内部ロジックの SOQL/DML 削減
+-	本番運用のドキュメント化
+	-	本設計書とは別に、「運用マニュアル」として以下を明記することを推奨：
+	    -	エラーメールのサンプル
+	    -	AllocationLog__c の参照方法
+	    -	各エラー文言ごとの対処フロー（どのマスタ/トランザクションを確認・修正するか）
+	    -	再実行の手順（画面操作手順、再実行時に考慮すべき締め処理・他バッチとの依存関係）
