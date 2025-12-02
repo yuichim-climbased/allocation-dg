@@ -231,7 +231,7 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
 
 ### 2.3. 労務費系（LaborCost__c）
 #### EXEC_LABORCOST_LABOR / EXEC_LABORCOST_SGA – getLaborCost(type)
-
+1 AND 2 AND 3 AND 4
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
 | 1 | 労務費 | LaborCost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
@@ -248,3 +248,72 @@ WHERE CompanyCode__c                    = :companyCode
 ```
 
 ### 2.4. 材料費系（MaterialCost__c）
+#### EXEC_MATERIALCOST_JOB – getMaterialCostJob
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 材料費 | MaterialCost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"年"値 |
+| 4 | 材料費 | MaterialCost__c | JOBNo. | JOBNo__c | != | null |
+
+```
+FROM MaterialCost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND JOBNo__c                          != null
+```
+
+#### EXEC_MATERIALCOST_TOTALIZAIONCODE – getMaterialCostTotalizationCode
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 材料費 | MaterialCost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"年"値 |
+| 4 | 材料費 | MaterialCost__c | 集計コード | TotalizationCode__c | != | null |
+
+```
+FROM MaterialCost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND TotalizationCode__c               != null
+```
+
+#### EXEC_MATERIALCOST_DEPT – getMaterialCostDept
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 材料費 | MaterialCost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 材料費 | MaterialCost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"年"値 |
+| 4 | 材料費 | MaterialCost__c | 部門コード | DeptCode__c | != | null |
+
+```
+FROM MaterialCost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND DeptCode__c                       != null
+```
+
+### 2.5. 振込手数料・請求書払い・仕入・部門販管費
+#### EXEC_CREDIT – getCredit（Credit__c）
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 入金 | Credit__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 入金 | Credit__c | 入金日 | CALENDAR_YEAR(CreditDate__c) | = | 画面入力の"年"値 |
+| 3 | 入金 | Credit__c | 入金日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"年"値 |
+| 4 | 入金 | Credit__c | 差額相殺区分 | DiffOffsetType__c | != | null |
+
+```
+FROM Credit__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(CreditDate__c)      = :processYear
+  AND CALENDAR_MONTH(CreditDate__c)     = :processMonth
+  AND DiffOffsetType__c                 != null
+```
+
