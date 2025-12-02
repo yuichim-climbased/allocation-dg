@@ -336,3 +336,22 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
   AND ExpItemId__r.ExpenseType__c                     = '請求書払い'
 ```
 
+#### EXEC_PAYINVOICE_COMPANY – getPayInvoiceCompany（PayInvoice__c）
+"EXEC_PAYINVOICE_DEPT – getPayInvoiceDept（PayInvoice__c）"と同じ
+
+#### EXEC_PROCUREMENTSGA – getProcurement（Procurement__c）
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 仕入 | appsfs__InboundDelivery__c | #カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 仕入 | appsfs__InboundDelivery__c | 納品予定日 | CALENDAR_YEAR(appsfs__fs_DeliveryDate__c) | = | 画面入力の"年"値 |
+| 3 | 仕入 | appsfs__InboundDelivery__c | 納品予定日 | CALENDAR_MONTH(appsfs__fs_DeliveryDate__c) | = | 画面入力の"月"値 |
+| 4 | 仕入 | appsfs__InboundDelivery__c | レコードタイプ | RecordTypeId | = | RID_Proc_Sga |
+
+```
+FROM appsfs__InboundDelivery__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(appsfs__fs_DeliveryDate__c)    = :processYear
+  AND CALENDAR_MONTH(appsfs__fs_DeliveryDate__c)   = :processMonth
+  AND RecordTypeId                      = :sgaRecordTypeId
+```
