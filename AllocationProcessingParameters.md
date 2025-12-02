@@ -317,3 +317,22 @@ WHERE CompanyCode__c                    = :companyCode
   AND DiffOffsetType__c                 != null
 ```
 
+#### EXEC_PAYINVOICE_DEPT – getPayInvoiceDept（PayInvoice__c）
+1 AND 2 AND 3 AND 4 AND 5
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 画面で入力したカンパニー |
+| 2 | 勤怠交通費 | AtkEmpExp__c | 日付 | CALENDAR_YEAR(Date__c) | = | 画面入力の"年"値 |
+| 3 | 勤怠交通費 | AtkEmpExp__c | 日付 | CALENDAR_MONTH(Date__c) | = | 画面入力の"月"値 |
+| 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
+| 5 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.精算区分 | ExpItemId__r.ExpenseType__c | = | 請求書払い |
+
+```
+FROM AtkEmpExp__c
+WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
+  AND CALENDAR_YEAR(Date__c)  = :processYear
+  AND CALENDAR_MONTH(Date__c) = :processMonth
+  AND ExpApplyId__r.Status__c      IN :targetStatusList
+  AND ExpItemId__r.ExpenseType__c                     = '請求書払い'
+```
+
