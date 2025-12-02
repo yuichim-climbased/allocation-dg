@@ -229,3 +229,4 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
 #### EXEC_EXPENSES_SGA_COMPANY – getExpensesSgaCompany
 "EXEC_EXPENSES_SGA_DEPT – getExpensesSgaDept"と同じ。
 
+### 2.3. 労務費系（LaborCost__c）
