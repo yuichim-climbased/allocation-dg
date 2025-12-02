@@ -103,7 +103,7 @@ WHERE CompanyCode__c                    = :companyCode
 ```
 
 #### EXEC_PRE4 – getAdjustDivisionForProject（ReportSummary__c）
-1 AND ((2 AND 3) OR (4 AND 5) OR ((6 AND 7) OR (8 AND 9) OR 10) AND 11 AND 
+1 AND ((2 AND 3) OR (4 AND 5) OR ((6 AND 7) OR (8 AND 9) OR 10) AND 11 AND 12
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
 | 1 | 帳票集計 | ReportSummary__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニーコード |
@@ -147,5 +147,85 @@ WHERE CompanyCode__c                         = :companyCode
       AND Procurement__r.DeliveryDate__c    >= :reportSummarySearchDate
       AND ReportSummaryKbn__c              = :repSumKbnCost
      )
-     ```
+```
+
+### 2.2. 経費系（ExpensesDetail__c）
+#### EXEC_EXPENSES_JOB – getExpensesJob
+1 AND 2 AND 3 AND 4 AND 5
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
+| 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
+| 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
+| 5 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目3 | ExpApplyId__r.ExtraItem3__c | != | null |
+
+```
+FROM AtkEmpExp__c
+WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
+AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
+AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
+AND ExpApplyId__r.Status__c      IN :targetStatusList
+AND ExpApplyId__r.ExtraItem3__c                       != null
+```
+
+#### EXEC_EXPENSES_TOTALIZATIONCODE – getExpensesTotalizationCode
+1 AND 2 AND 3 AND 4 AND 5
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
+| 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
+| 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
+| 5 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目3 | ExpApplyId__r.ExtraItem1__c | != | null |
+
+```
+FROM AtkEmpExp__c
+WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
+  AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
+  AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
+  AND ExpApplyId__r.Status__c      IN :targetStatusList
+  AND ExpApplyId__r.ExtraItem1__c                       != null
+```
+
+#### EXEC_EXPENSES_COMMON – getExpensesCommon
+1 AND 2 AND 3 AND 4 AND 5
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
+| 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
+| 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
+| 5 | 勤怠交通費 | AtkEmpExp__c | 費目.計上方法 | ExpItemId__r.AccountingMethod__c | = | 共通費 |
+
+```
+FROM AtkEmpExp__c
+WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
+  AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
+  AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
+  AND ExpApplyId__r.Status__c      IN :targetStatusList
+  AND ExpItemId__r.AccountingMethod__c                  = '共通費'
+```
+
+#### EXEC_EXPENSES_SGA_DEPT – getExpensesSgaDept
+1 AND 2 AND 3 AND 4 AND 5
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
+| 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
+| 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
+| 5 | 勤怠交通費 | AtkEmpExp__c | 費目.計上方法 | ExpItemId__r.AccountingMethod__c | = | 販管費 |
+
+```
+FROM AtkEmpExp__c
+WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
+  AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
+  AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
+  AND ExpApplyId__r.Status__c      IN :targetStatusList
+  AND ExpItemId__r.AccountingMethod__c                  = '販管費'
+```
+
+#### EXEC_EXPENSES_SGA_COMPANY – getExpensesSgaCompany
+"EXEC_EXPENSES_SGA_DEPT – getExpensesSgaDept"と同じ。
 
