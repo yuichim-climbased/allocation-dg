@@ -154,7 +154,7 @@ WHERE CompanyCode__c                         = :companyCode
 1 AND 2 AND 3 AND 4 AND 5
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
-| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 画面で入力したカンパニー |
 | 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
 | 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
 | 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
@@ -163,17 +163,17 @@ WHERE CompanyCode__c                         = :companyCode
 ```
 FROM AtkEmpExp__c
 WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
-AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
-AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
-AND ExpApplyId__r.Status__c      IN :targetStatusList
-AND ExpApplyId__r.ExtraItem3__c                       != null
+  AND CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c)  = :processYear
+  AND CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) = :processMonth
+  AND ExpApplyId__r.Status__c      IN :targetStatusList
+  AND ExpApplyId__r.ExtraItem3__c                       != null
 ```
 
 #### EXEC_EXPENSES_TOTALIZATIONCODE – getExpensesTotalizationCode
 1 AND 2 AND 3 AND 4 AND 5
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
-| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 画面で入力したカンパニー |
 | 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
 | 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
 | 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
@@ -192,7 +192,7 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
 1 AND 2 AND 3 AND 4 AND 5
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
-| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 画面で入力したカンパニー |
 | 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
 | 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
 | 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
@@ -211,7 +211,7 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
 1 AND 2 AND 3 AND 4 AND 5
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
-| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 300 |
+| 1 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.拡張項目2 | ExpApplyId__r.ExtraItem2__c | = | 画面で入力したカンパニー |
 | 2 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_YEAR(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"年"値 |
 | 3 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.#計上月末日 | CALENDAR_MONTH(ExpApplyId__r.PostMonthEndDate__c) | = | 画面入力の"月"値 |
 | 4 | 勤怠交通費 | AtkEmpExp__c | 交通費申請.ステータス | ExpApplyId__r.Status__c | = | 承認済み or 精算済み or 確定済み |
@@ -230,3 +230,21 @@ WHERE ExpApplyId__r.ExtraItem2__c                     = :companyCode
 "EXEC_EXPENSES_SGA_DEPT – getExpensesSgaDept"と同じ。
 
 ### 2.3. 労務費系（LaborCost__c）
+#### EXEC_LABORCOST_LABOR / EXEC_LABORCOST_SGA – getLaborCost(type)
+
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 労務費 | LaborCost__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニー |
+| 2 | 労務費 | LaborCost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 労務費 | LaborCost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 4 | 労務費 | LaborCost__c | 区分 | Type__c | = | 労務費 or 販管費 |
+
+```
+FROM LaborCost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND Type__c                           = :type   -- '労務費' or '販管費'
+```
+
+### 2.4. 材料費系（MaterialCost__c）
