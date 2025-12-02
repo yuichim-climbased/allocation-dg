@@ -46,3 +46,19 @@
 | EXEC_POST2 | 帳票集計（販管費）作成 | getSga() | insertReportSummaryFromSga(List<SGA__c>) | SGA__c ごとに ReportSummary__c 生成 → insert |
 
 ## 2. データ取得条件（SOQL WHERE 条件）
+### 2.1. 前処理系
+#### EXEC_PRE1 – getDeleteSgaAndReportSummary（SGA__c）
+| オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|
+| 販管費 | SGA__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 販管費 | SGA__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 販管費 | SGA__c | 締め管理 | Closing__c | = | null |
+
+
+```
+FROM SGA__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND Closing__c                        = null
+```
