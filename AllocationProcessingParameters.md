@@ -48,12 +48,13 @@
 ## 2. データ取得条件（SOQL WHERE 条件）
 ### 2.1. 前処理系
 #### EXEC_PRE1 – getDeleteSgaAndReportSummary（SGA__c）
-| オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
-|----|----|----|----|----|----|
-| 販管費 | SGA__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
-| 販管費 | SGA__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
-| 販管費 | SGA__c | 締め管理 | Closing__c | = | null |
-
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 配賦明細データ | AllocationDetail__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニーコード |
+| 2 | 販管費 | SGA__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 販管費 | SGA__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 4 | 販管費 | SGA__c | 締め管理 | Closing__c | = | null |
 
 ```
 FROM SGA__c
@@ -62,3 +63,89 @@ WHERE CompanyCode__c                    = :companyCode
   AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
   AND Closing__c                        = null
 ```
+
+#### EXEC_PRE2 – getDeleteCostAndReportSummary（Cost__c）
+1 AND 2 AND 3 AND 4
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 配賦明細データ | AllocationDetail__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニーコード |
+| 2 | 原価 | Cost__c | 発生日 | CALENDAR_YEAR(AccrualDate__c) | = | 画面入力の"年"値 |
+| 3 | 原価 | Cost__c | 発生日 | CALENDAR_MONTH(AccrualDate__c) | = | 画面入力の"月"値 |
+| 4 | 原価 | Cost__c | 計上済フラグ | CostFlg__c | = | false |
+
+```
+FROM Cost__c
+WHERE CompanyCode__c                    = :companyCode
+  AND CALENDAR_YEAR(AccrualDate__c)     = :processYear
+  AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
+  AND CostFlg__c                        = false
+```
+
+#### EXEC_PRE3 – getDeleteAllocationDetail（AllocationDetail__c）
+1 AND (2 OR (3 AND 4))
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 配賦明細データ | AllocationDetail__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニーコード |
+| 2 | 配賦明細データ | AllocationDetail__c | 計上日 | YMD__c | < | ADDMONTH(配賦処理実行日, -1) |
+| 3 | 配賦明細データ | AllocationDetail__c | 計上日 | CALENDAR_YEAR(YMD__c) | = | 画面入力の"年"値 |
+| 4 | 配賦明細データ | AllocationDetail__c | 計上日 | CALENDAR_MONTH(YMD__c) | = | 画面入力の"月"値 |
+
+```
+FROM AllocationDetail__c
+WHERE CompanyCode__c                    = :companyCode
+  AND (
+        YMD__c < :allocationDetailDelDate
+     OR (
+          CALENDAR_YEAR(YMD__c)         = :processYear
+      AND CALENDAR_MONTH(YMD__c)        = :processMonth
+        )
+      )
+```
+
+#### EXEC_PRE4 – getAdjustDivisionForProject（ReportSummary__c）
+1 AND ((2 AND 3) OR (4 AND 5) OR ((6 AND 7) OR (8 AND 9) OR 10) AND 11 AND 
+| # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
+|----|----|----|----|----|----|----|
+| 1 | 帳票集計 | ReportSummary__c | カンパニーコード | CompanyCode__c | = | 画面で入力したカンパニーコード |
+| 2 | 帳票集計 | ReportSummary__c | 【階層】案件.レコードタイプ | Project__r.RecordTypeId | = | RID_Project_Normal__c |
+| 3 | 帳票集計 | ReportSummary__c | 【階層】案件.売上予定月 | Project__r.TargetMonth__c | = | 配賦処理実行日の1日 |
+| 4 | 帳票集計 | ReportSummary__c | 【階層】案件.レコードタイプ | Project__r.RecordTypeId | = |  RID_Project_SalesTransfer__c |
+| 5 | 帳票集計 | ReportSummary__c | 【階層】案件.売上予定日（振替元） | Project__r.TransferFromTargetMonth__c | >= | 配賦処理実行日の1日 |
+| 6 | 帳票集計 | ReportSummary__c | 【階層】案件.レコードタイプ | Project__r.RecordTypeId | = | RID_Project_Normal__c |
+| 7 | 帳票集計 | ReportSummary__c | 【階層】案件.売上予定月 | Project__r.TargetMonth__c | = | 配賦処理実行日の1日 |
+| 8 | 帳票集計 | ReportSummary__c | 【階層】案件.レコードタイプ | Project__r.RecordTypeId | = |  RID_Project_SalesTransfer__c |
+| 9 | 帳票集計 | ReportSummary__c | 【階層】案件.売上予定日（振替元） | Project__r.TransferFromTargetMonth__c | >= | 配賦処理実行日の1日 |
+| 10 | 帳票集計 | ReportSummary__c | 【階層】案件.レコードタイプ | Project__r.RecordTypeId | = | RID_Project_Pre__c |
+| 11 | 帳票集計 | ReportSummary__c | 仕入.納品予定日 | Procurement__r.appsfs__fs_DeliveryDate__c | >= | 配賦処理実行日の1日 |
+| 12 | 帳票集計 | ReportSummary__c | 集計区分 | ReportSummaryKbn__c | = | 原価 |
+
+```
+FROM ReportSummary__c
+WHERE CompanyCode__c                         = :companyCode
+  AND (
+        -- 当月以降案件・仕掛の調整対象
+        (
+          Project__r.RecordTypeId            = :recTypeNormal
+      AND Project__r.TargetMonth__c         >= :reportSummarySearchDate
+        )
+     OR (
+          Project__r.RecordTypeId           IN :projectRecTypeIdTransfer
+      AND Project__r.TransferFromTargetMonth__c >= :reportSummarySearchDate
+        )
+     OR (
+        -- 後原価の調整対象
+        (
+          Project__r.RecordTypeId            = :recTypeNormal
+      AND Project__r.TargetMonth__c         < :reportSummarySearchDate
+        )
+      OR (
+          Project__r.RecordTypeId           IN :projectRecTypeIdTransfer
+      AND Project__r.TransferFromTargetMonth__c < :reportSummarySearchDate
+        )
+      OR  Project__r.RecordTypeId           = :recTypePre
+      )
+      AND Procurement__r.DeliveryDate__c    >= :reportSummarySearchDate
+      AND ReportSummaryKbn__c              = :repSumKbnCost
+     )
+     ```
+
