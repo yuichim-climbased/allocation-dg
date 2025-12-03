@@ -404,7 +404,7 @@ WHERE CompanyCode__c                    = :companyCode
   AND CostFlg__c                        = false
 ```
 
-#### FROM SGA__c
+#### EXEC_POST2 – getSga（SGA__c）
 1 AND 2 AND 3 AND 4
 | # | オブジェクト | API参照名 | 項目名 | API参照名 | 演算子 | 値 |
 |----|----|----|----|----|----|----|
@@ -565,4 +565,112 @@ insert costList;
 | 6 | TotalizationCode__c | totalizationCodeId（バッチ側で取得したマスタの ID） |
 | 7 | Project__c | null |
 
+  5. 集計コード均等配賦 → Cost（toCostForTotalizationCodeEquality）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | AtkEmpExp__c | atcDto.expensesDetailId（あれば） |
+| 2 | MaterialCost__c | atcDto.materialCostId（ExpensesDetail が空の場合） |
+| 3 | TotalizationCode__c | totalizationCodeId |
+| 4 | SalesCostDate__c | allocationDate |
+| 5 | AccountsCode__c | atcDto.accountsCode |
+| 6 | AccrualDate__c | atcDto.accrualDate |
+| 7 | Amount__c | 分割後の amount |
+
+### 3.3. 販管費｜生成・更新（SGA__c）
+  1. 生成（AllocationDetail → SGA__c）
+  - DML
+
+```
+// 配賦明細から生成された sga をマージしたうえで upsert
+upsert upsertSgaList;
+```
+
+新規作成時は toSga(allocationDetail) の値がそのまま insert される。
+ - toSga(AllocationDetail__c allocationDetail) で設定される項目
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | CompanyCode__c | allocationDetail.CompanyCode__c |
+| 2 | AccrualDate__c | allocationDetail.YMD__c |
+| 3 | AccountsCode__c | allocationDetail.AccountsCode__c |
+| 4 | Division_GL__c | allocationDetail.DivisionGL__c |
+| 5 | Amount__c | allocationDetail.Amount__c |
+
+※ SummaryKey__c はコード上では設定しておらず、別ロジック（式項目やトリガ）で生成される。
+  2. 更新（集約時の Amount 加算）
+insertAllocationDetailToSga 内で、同一キー（SummaryKey）を持つ 既存 SGA がある場合に更新される。
+
+| # | 項目名 | 更新値 | 備考 |
+|----|----|----|----|
+| 1 | Amount__c | 既存 sga.Amount__c + mergeSgaMap[key].Amount__c | 同一 (CompanyCode, AccrualDate, AccountsCode, Division_GL) などで集約 |
+
+それ以外の項目（CompanyCode__c / AccountsCode__c / Division_GL__c / AccrualDate__c など）は 既存レコードの値を維持 したまま upsert される。
+
+### 3.4. 帳票集計｜生成・更新（ReportSummary__c）
+  1. 生成（Cost → ReportSummary）
+  - DML
+
+```
+insert insertReportSummaryList;
+```
+
+  - insertReportSummaryFromCost で設定される項目
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | CompanyCode__c | allocationDetail.CompanyCode__c |
+| 2 | YMD__c | existCost.SalesCostDate__c |
+| 3 | CostAmount__c | existCost.Amount__c |
+| 4 | Cost__c | existCost.Id |
+| 5 | Project__c | existCost.Project__c |
+| 6 | TotalizationCode__c | existCost.TotalizationCode__c |
+| 7 | Division_GL__c | existCost.TotalizationCode__r.Division__c |
+| 8 | Division_GM__c | existCost.TotalizationCode__r.Division__r.ParentSection__c |
+| 9 | Division_EM__c | existCost.TotalizationCode__r.Division__r.ParentSection__r.ParentSection__c |
+| 10 | Division_DD__c | existCost.TotalizationCode__r.Division__r.ParentSection__r.ParentSection__r.ParentSection__c |
+| 11 | RecordTypeId | RID_ReportSummary_Normal__c |
+| 12 | ReportSummaryKbn__c | '原価(経費)' or '原価(材料費)'（Cost の元明細により判定） |
+
+  2. 生成（SGA → ReportSummary）
+  - DML
+
+```
+insert insertReportSummaryList;
+```
+
+  - insertReportSummaryFromSga で設定される項目
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | CompanyCode__c | allocationDetail.CompanyCode__c |
+| 2 | YMD__c | existCost.SalesCostDate__c |
+| 3 | SgaAmount__c | existSga.Amount__c |
+| 4 | SGA__c | existSga.Id |
+| 5 | Division_GL__c | existSga.Division_GL__c |
+| 6 | Division_GM__c | existSga.Division_GL__r.ParentSection__c |
+| 7 | Division_EM__c | existSga.Division_GL__r.ParentSection__r.ParentSection__c |
+| 8 | Division_DD__c | existSga.Division_GL__r.ParentSection__r.ParentSection__r.ParentSection__c |
+| 9 | RecordTypeId | RID_ReportSummary_Normal__c |
+| 10 | ReportSummaryKbn__c | '販管費' |
+
+  3. 更新（案件マスタにあわせた集計コード・部門調整）
+  - DML
+
+```
+update updateList;
+```
+
+adjustDivisionForProject(List<ReportSummary__c> inObjList) 内で、「案件側の集計コード・部門」と現在の帳票集計の値が違うときに更新される。
+  - 更新される項目
+
+| # | 項目名 | 更新値 | 備考 |
+|----|----|----|----|
+| 1 | Id | obj.Id | 更新対象のレコード ID |
+| 2 | TotalizationCode__c | obj.Project__r.TotalizationCode__c | 案件マスタ側の集計コード |
+| 3 | Division_GL__c | obj.Project__r.TotalizationCode__r.Division__c | 部門GL |
+| 4 | Division_GM__c | obj.Project__r.TotalizationCode__r.Division__r.ParentSection__c | 部門GM |
+| 5 | Division_EM__c | obj.Project__r.TotalizationCode__r.Division__r.ParentSection__r.ParentSection__c | 部門EM |
+| 6 | Division_DD__c | obj.Project__r.TotalizationCode__r.Division__r.ParentSection__r.ParentSection__r.ParentSection__c | 部門DD |
+| 7 | IsSyncProject__c | true（条件付き） | obj.ReportSummaryKbn__c == '評価損' の場合のみ ON |
 
