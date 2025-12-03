@@ -524,10 +524,45 @@ insert costList;
 
 | # | 項目名 | 設定値（ソース） |
 |----|----|----|
-| 1 | CompanyCode__c | companyCode |
-| 2 | AtkEmpExp__c | AtkEmpExp__c.Id |
-| 3 | AccrualDate__c | AtkEmpExp__r.ExpApplyId__r.PostMonthEndDate__c |
+| 1 | AtkEmpExp__c | AtkEmpExp__c.Id |
+| 2 | AccrualDate__c | AtkEmpExp__r.ExpApplyId__r.PostMonthEndDate__c |
+| 3 | Amount__c | AtkEmpExp__r.WithoutTax__c |
+| 4 | AccountsCode__c | AtkEmpExp__r.ExpItemId__r.Code__c |
+| 5 | SalesCostDate__c | Project.RecordType や TargetMonth__c / TransferFromTargetMonth__c と allocationDate から判定した日付 |
+
+  2. 経費(集計コード) → Cost（toCostForExpensesTotalizationCode）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | AtkEmpExp__c | AtkEmpExp__c.Id |
+| 2 | AccrualDate__c | AtkEmpExp__r.ExpApplyId__r.PostMonthEndDate__c |
+| 3 | SalesCostDate__c | allocationDate |
 | 4 | Amount__c | AtkEmpExp__r.WithoutTax__c |
 | 5 | AccountsCode__c | AtkEmpExp__r.ExpItemId__r.Code__c |
+| 6 | Project__c | null |
+
+  3. 材料費(JOB) → Cost（toCostForMaterialCostJob）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | AccrualDate__c | materialCost.AccrualDate__c |
+| 2 | Amount__c | materialCost.Amount__c |
+| 3 | AccountsCode__c | materialCost.AccountsCode__c |
+| 4 | SalesCostDate__c | Project.RecordType や TargetMonth__c / TransferFromTargetMonth__c と allocationDate から判定した日付 |
+| 5 | MaterialCost__c | materialCost.Id |
+| 6 | TotalizationCode__c | project.TotalizationCode__c |
+| 7 | Project__c | project.Id |
+
+  4. 材料費(集計コード) → Cost（toCostForMaterialCostTotalizationCode）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | AccrualDate__c | materialCost.AccrualDate__c |
+| 2 | Amount__c | materialCost.Amount__c |
+| 3 | AccountsCode__c | materialCost.AccountsCode__c |
+| 4 | SalesCostDate__c | allocationDate |
+| 5 | MaterialCost__c | materialCost.Id |
+| 6 | TotalizationCode__c | totalizationCodeId（バッチ側で取得したマスタの ID） |
+| 7 | Project__c | null |
 
 
