@@ -519,4 +519,15 @@ insert costList;
 | 8 | AtkEmpExp__c | 元の明細ID |
 | 9 | MaterialCost__c | 元の明細ID |
 
+- パターン別に設定される項目
+  1. 経費(JOB) → Cost（toCostForExpensesJob）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | CompanyCode__c | companyCode |
+| 2 | AtkEmpExp__c | AtkEmpExp__c.Id |
+| 3 | AccrualDate__c | AtkEmpExp__r.ExpApplyId__r.PostMonthEndDate__c |
+| 4 | Amount__c | AtkEmpExp__r.WithoutTax__c |
+| 5 | AccountsCode__c | AtkEmpExp__r.ExpItemId__r.Code__c |
+
 
