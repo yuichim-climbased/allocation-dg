@@ -420,3 +420,103 @@ WHERE CompanyCode__c                    = :companyCode
   AND CALENDAR_MONTH(AccrualDate__c)    = :processMonth
   AND Closing__c                        = null
 ```
+
+## 3. データ生成・更新
+### 3.1. 配賦明細｜生成（AllocationDetail__c）
+- DML
+
+```
+// 各種 allocationXXX(...) 内で生成された List<AllocationDetail__c> を insert
+insert insertAllocationDetailList;
+```
+
+- 生成時に設定される項目（共通）
+> いずれも AllocationLogic.createAllocationDetail(...) 内でセット
+1.  配賦明細
+
+| # | 項目名 | 設定値（ソース） | 備考 |
+|----|----|----|----|
+| 1 | CompanyCode__c | companyCode（バッチ全体で共通の会社コード） | 全 EXEC_* 共通 |
+| 2 | YMD__c | sgaDto.accrualDate | 発生日 |
+| 3 | AccountsCode__c | sgaDto.accountsCode | 勘定科目コード |
+| 4 | DivisionGL__c | glDivision.Id | 部門（GL）ID |
+| 5 | DivisionCodeGL__c | glDivision.Name | 部門（GL）コード |
+| 6 | DivisionNameGL__c | glDivision.DivisionName__c | 部門（GL）名 |
+| 7 | DivisionGM__c | glDivision.ParentSection__c | 部門（GM）ID |
+| 8 | DivisionCodeGM__c | glDivision.ParentSection__r.Name | 部門（GM）コード |
+| 9 | DivisionNameGM__c | glDivision.ParentSection__r.DivisionName__c | 部門（GM）名 |
+| 10 | DivisionDept__c | glDivision.ParentSection__r.ParentSection__c | 部門（部）ID |
+| 11 | DivisionCodeDept__c | glDivision.ParentSection__r.ParentSection__r.Name | 部門（部）コード |
+| 12 | DivisionNameDept__c | glDivision.ParentSection__r.ParentSection__r.DivisionName__c | 部門（部）名 |
+| 13 | DivisionHQ__c | glDivision.ParentSection__r.ParentSection__r.ParentSection__c | 部門（本部）ID |
+| 14 | DivisionCodeHQ__c | glDivision.ParentSection__r.ParentSection__r.ParentSection__r.Name | 部門（本部）コード |
+| 15 | DivisionNameHQ__c | glDivision.ParentSection__r.ParentSection__r.ParentSection__r.DivisionName__c | 部門（本部）名 |
+| 16 | Amount__c | amount | GL・ユーザ・部門への配賦後の金額 |
+| 17 | AllocationType__c | allocationTypeMap.get(processCount) | EXEC_* ごとにマスタから種別を引く |
+| 18 | SourceObjId__c | sgaDto.sourceId | 元オブジェクトID（経費・労務費・請求書・仕入など） |
+| 19 | SourceAmount__c | sgaDto.amount | 元オブジェクトの金額 |
+
+- 元オブジェクト参照項目（EXEC_* により分岐）
+> createAllocationDetail 内の processCount 分岐
+
+| # | 項目名 | 設定値（ソース） | 適用 EXEC_* |
+|----|----|----|----|
+| 1 | ExpensesDetail__c | allocationDetail.SourceObjId__c | EXEC_EXPENSES_SGA_DEPT, EXEC_EXPENSES_SGA_COMPANY |
+| 2 | LaborCost__c | allocationDetail.SourceObjId__c | EXEC_LABORCOST_LABOR, EXEC_LABORCOST_SGA |
+| 3 | ExpensesDetail__c | allocationDetail.SourceObjId__c | EXEC_PAYINVOICE_DEPT, EXEC_PAYINVOICE_COMPANY |
+| 4 | Credit__c | allocationDetail.SourceObjId__c | EXEC_CREDIT |
+| 5 | Procurement__c | allocationDetail.SourceObjId__c | EXEC_PROCUREMENTSGA |
+| 6 | DivisionSGA__c | allocationDetail.SourceObjId__c | EXEC_DIVISIONSGA |
+
+- 配賦ターゲット（ユーザ or 部門）の項目
+> createAllocationDetail の末尾で、userSection の有無に応じて分岐
+- ユーザ配賦（全社配賦・ユーザ配賦系 EXEC の場合）
+
+| # | 項目名 | 設定値（ソース） | 備考 |
+|----|----|----|----|
+| 1 | TargetUserSection__c | userSection.Id | ユーザ所属部門 |
+| 2 | TargetUserEmpCode__c | userSection.UserId__r.EmpCode__c | 社員コード |
+| 3 | TargetUserSectionCode__c | userSection.Section__r.Name | 所属部門コード |
+| 4 | TargetUserSectionName__c | userSection.Section__r.DivisionName__c | 所属部門名 |
+| 5 | TargetUserSectionPercent__c | userSection.Percent__c | 部門按分率 |
+| 6 | TargetUserSectionAmount__c | userAmount | ユーザ別金額 |
+
+- 部門配賦（deptDivisionId が設定されている場合）
+
+| # | 項目名 | 設定値（ソース） | 備考 |
+|----|----|----|----|
+| 1 | TargetDivision__c | sgaDto.deptDivisionId | 配賦先「部」の Division__c |
+| 2 | TargetDivisionCode__c | companyDivisionMap.get(TargetDivision__c).Name | コード |
+| 3 | TargetDivisionName__c | companyDivisionMap.get(TargetDivision__c).DivisionName__c | 名称 |
+| 4 | TargetDivisionAmount__c | sgaDto.amount | 部門単位での配賦元金額 |
+
+### 3.2. 原価｜生成（Cost__c）
+- DML
+
+```
+// 経費・材料費から生成された costList の insert
+insert costList;
+```
+
+- 生成パターン
+    1.  経費(JOB)      → toCostForExpensesJob
+    2.  経費(集計コード) → toCostForExpensesTotalizationCode
+    3.  材料費(JOB)    → toCostForMaterialCostJob
+    4.  材料費(集計コード) → toCostForMaterialCostTotalizationCode
+    5.  経費／材料費の集計コード均等配賦 → toCostForTotalizationCodeEquality
+
+- 生成時に設定される項目（共通）
+
+| # | 項目名 | 設定値（ソース） |
+|----|----|----|
+| 1 | CompanyCode__c | companyCode |
+| 2 | AccrualDate__c | 経費 or 材料費の計上日 |
+| 3 | SalesCostDate__c | 案件情報＋ allocationDate による計上期判定 |
+| 4 | Amount__c | 経費 or 材料費の金額（または配賦後金額） |
+| 5 | AccountsCode__c | 経費科目 or 材料費科目の勘定科目コード |
+| 6 | TotalizationCode__c | 案件 or 経費／材料費に紐づく集計コード |
+| 7 | Project__c | JOB 原価の場合は案件 ID、集計コード原価の場合は null |
+| 8 | AtkEmpExp__c | 元の明細ID |
+| 9 | MaterialCost__c | 元の明細ID |
+
+
